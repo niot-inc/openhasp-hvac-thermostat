@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>openHASP Thermostat — Web Installer</title>
+  </head>
+  <body style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; padding: 24px;">
+    <h1>openHASP Thermostat</h1>
+    <p>아래 버튼을 눌러 장치를 연결하고 설치하세요.</p>
+
+    <!-- manifest는 같은 폴더의 파일을 가리킴 -->
+    <esp-web-install-button manifest="manifest.json"></esp-web-install-button>
+
+    <script type="module"
+      src="https://unpkg.com/esp-web-tools@latest/dist/web/install-button.js?module">
+    </script>
+  </body>
+</html>
