@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ESP32-S3 Thermostat WebFlasher</title>
+  <script type="module" src="https://unpkg.com/esp-web-tools@9/dist/web/install-button.js?module"></script>
+</head>
+<body>
+  <h1>ESP32-S3 Thermostat Firmware Flasher</h1>
+  <p>아래 버튼을 눌러 장치에 펌웨어를 설치하세요.</p>
+
+  <!-- 설치 버튼 -->
+  <esp-web-install-button manifest="webflash/manifest.json"></esp-web-install-button>
+
+  <p><b>Tip:</b> macOS에서 드라이버가 안 보이면 CH34x 드라이버를 설치하세요.</p>
+</body>
+</html>
