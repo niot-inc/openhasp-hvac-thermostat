@@ -47,17 +47,29 @@ $ ls /dev/tty.*
 
 이 프로젝트의 코드를 OpenHASP 메인 프로젝트에 복사하여 사용합니다.
 
-## 빌드 및 펌웨어 업로드
+## 빌드 및 펌웨어 업로드 (개발자용)
 
 PlatformIO를 사용하여 빌드합니다:
 
 1. **PlatformIO Project Tasks** 패널 열기
 2. **`panlee-zw3d95ce01s-tr-4848_16MB`** 환경 선택
-3. **General** 하위 메뉴 사용:
-   - **Build**: 빌드만 수행
-   - **Upload**: 펌웨어 업로드
-   - **Monitor**: 시리얼 모니터 실행
-   - **Upload and Monitor**: 업로드 후 모니터 실행
+3. 빌드 메뉴:
+   - **General → Build**: 펌웨어 빌드 (`.pio/build/panlee-zw3d95ce01s-tr-4848_16MB/firmware.bin` 생성)
+   - **Platform → Build Filesystem Image**: 파일시스템 빌드 (`data/` → `littlefs.bin` 생성)
+   - **General → Upload**: 펌웨어 업로드
+   - **General → Monitor**: 시리얼 모니터 실행
+   - **General → Upload and Monitor**: 업로드 후 모니터 실행
+
+## 펌웨어 설치 (사용자용)
+
+개발자로부터 다음 두 파일을 받아 설치합니다:
+
+- **firmware.bin**: 메인 펌웨어
+- **littlefs.bin**: 파일시스템 (UI 파일 포함)
+
+### 설치 방법
+1. **웹 플래셔** 또는 **esptool**을 사용하여 두 파일을 한 번에 업로드
+2. 장치를 USB로 연결하고 업로드 진행
 
 ## 장치 설정
 
