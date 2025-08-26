@@ -11,6 +11,10 @@
         {
           "path": "firmware.bin",
           "offset": 0
+        },
+        {
+          "path": "littlefs.bin",
+          "offset": 4263936
         }
       ]
     }
