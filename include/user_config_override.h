@@ -34,8 +34,8 @@
 #define MQTT_USERNAME ""
 #define MQTT_PASSWORD ""
 #define MQTT_PREFIX "hasp"
-#define MQTT_NODENAME "plate01"
-#define MQTT_GROUPNAME "plates"
+#define MQTT_NODENAME "room01"
+#define MQTT_GROUPNAME "rooms"
 
 #define MQTT_TELEPERIOD 60000
 #define MQTT_STATEPERIOD 300000
@@ -63,7 +63,8 @@
 #define NTPSERVER2 "time.nist.gov"
 #define NTPSERVER3 "time.google.com"
 #define MYTZ                                                                                                           \
-    "CET-1CEST,M3.5.0,M10.5.0/3" // A full list with possible timezones can be found here
+    "KST-9"
+    // "CET-1CEST,M3.5.0,M10.5.0/3" // A full list with possible timezones can be found here
                                  // https://gist.github.com/alwynallan/24d96091655391107939
 
 /***************************************************

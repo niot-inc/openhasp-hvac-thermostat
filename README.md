@@ -68,8 +68,9 @@ PlatformIO를 사용하여 빌드합니다:
 - **littlefs.bin**: 파일시스템 (UI 파일 포함)
 
 ### 설치 방법
-1. **웹 플래셔** 또는 **esptool**을 사용하여 두 파일을 한 번에 업로드
-2. 장치를 USB로 연결하고 업로드 진행
+
+1. 장치를 USB애 연결
+2. [웹 플레셔](https://niot-inc.github.io/openhasp-hvac-thermostat/index.html)에 접속
 
 ## 장치 설정
 
