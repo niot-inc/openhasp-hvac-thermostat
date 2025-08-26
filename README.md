@@ -62,13 +62,6 @@ PlatformIO를 사용하여 빌드합니다:
 
 ## 펌웨어 설치 (사용자용)
 
-개발자로부터 다음 두 파일을 받아 설치합니다:
-
-- **firmware.bin**: 메인 펌웨어
-- **littlefs.bin**: 파일시스템 (UI 파일 포함)
-
-### 설치 방법
-
 1. 장치를 USB애 연결
 2. [웹 플레셔](https://niot-inc.github.io/openhasp-hvac-thermostat/index.html)에 접속
 
