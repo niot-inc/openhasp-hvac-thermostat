@@ -2,16 +2,127 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ESP32-S3 SuperB Thermostat WebFlasher</title>
   <script type="module" src="https://unpkg.com/esp-web-tools@9/dist/web/install-button.js?module"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    h1 {
+      color: #2c3e50;
+      text-align: center;
+    }
+    .install-section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .setup-guide {
+      background: #e8f4f8;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .setup-guide h3 {
+      color: #2980b9;
+      margin-top: 0;
+    }
+    .step {
+      margin: 15px 0;
+      padding: 10px;
+      border-left: 4px solid #3498db;
+      background: rgba(52, 152, 219, 0.1);
+    }
+    .substep {
+      margin: 8px 0 8px 20px;
+      font-size: 0.95em;
+    }
+    code {
+      background: #f1f1f1;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    .tip {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 4px;
+      padding: 10px;
+      margin: 15px 0;
+    }
+    .important {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      border-radius: 4px;
+      padding: 10px;
+      margin: 15px 0;
+    }
+  </style>
 </head>
 <body>
-  <h1>ESP32-S3 SuperB Thermostat Firmware Flasher</h1>
-  <p>아래 버튼을 눌러 장치에 펌웨어를 설치하세요.</p>
+  <h1>ESP32-S3 SuperB Thermostat</h1>
+  <p style="text-align: center; color: #666;">OpenHASP 기반 온도조절기 펌웨어 설치 및 설정</p>
 
-  <!-- 설치 버튼 -->
-  <esp-web-install-button manifest="webflash/manifest.json"></esp-web-install-button>
+  <div class="install-section">
+    <h2>1. 펌웨어 설치</h2>
+    <p>장치의 디버그 포트를 USB로 연결하고 아래 버튼을 클릭하여 설치하세요.</p>
+    
+    <!-- 설치 버튼 -->
+    <esp-web-install-button manifest="webflash/manifest.json"></esp-web-install-button>
+    
+    <div class="tip">
+      <strong>Tip:</strong> macOS에서 장치가 인식되지 않으면 CH34x USB Serial 드라이버를 설치하세요.
+      <br><a href="http://www.wch.cn/downloads/CH34XSER_MAC_ZIP.html" target="_blank">드라이버 다운로드</a>
+    </div>
+  </div>
 
-  <p><b>Tip:</b> macOS에서 드라이버가 안 보이면 CH34x 드라이버를 설치하세요.</p>
+  <div class="setup-guide">
+    <h3>2. 초기 설정 가이드</h3>
+    
+    <div class="step">
+      <strong>Step 1: Wi-Fi 연결</strong>
+      <div class="substep">장치를 Wi-Fi 네트워크에 연결합니다.</div>
+    </div>
+    
+    <div class="step">
+      <strong>Step 2: 웹 설정 페이지 접속</strong>
+      <div class="substep">1. <strong>HASP Design</strong> → UI Theme를 <code>"Material Dark"</code>로 변경</div>
+      <div class="substep">2. <strong>Configuration → MQTT Settings</strong>에서:</div>
+      <div class="substep">
+        • <strong>Hostname</strong>: 각 방별로 고유하게 설정 (<code>room1</code>, <code>room2</code>, <code>room3</code> 등)<br>
+        • <strong>Broker</strong>: MQTT 서버 주소 (<code>&lt;superb-ip&gt;:1883</code>)<br>
+        • <strong>Username</strong>: <code>superb</code><br>
+        • <strong>Password</strong>: <code>superb</code>
+      </div>
+    </div>
+    
+    <div class="step">
+      <strong>Step 3: 온도계 보정 (필요시)</strong>
+      <div class="substep">1. <strong>File Editor</strong> → <code>superb.json</code> 파일 선택</div>
+      <div class="substep">2. <code>temp_offset</code> 값을 원하는 보정값으로 수정</div>
+      <div class="substep">3. <strong>Save</strong> 버튼 클릭 후 장치 재시작</div>
+    </div>
+  </div>
+
+  <div class="important">
+    <strong>중요:</strong> 설정 완료 후 장치가 MQTT를 통해 온도 데이터를 전송하고 원격 제어가 가능합니다.
+  </div>
+
+  <hr style="margin: 40px 0;">
+  
+  <footer style="text-align: center; color: #666; font-size: 0.9em;">
+    <p>
+      <a href="https://github.com/niot-inc/openhasp-hvac-thermostat" target="_blank">GitHub 프로젝트</a> | 
+      <a href="https://www.openhasp.com/" target="_blank">OpenHASP 공식 사이트</a>
+    </p>
+  </footer>
 </body>
 </html>
