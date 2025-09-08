@@ -12,6 +12,7 @@
 
 #include "state.h"
 #include "sht20.h"
+#include "sht30.h"
 #include "ui_sync.h"
 #include "mqtt_ctrl.h"
 
@@ -57,8 +58,10 @@ String get_device_name_from_config() {
 void custom_setup()
 {
     LOG_INFO(TAG_CUSTOM, "custom_setup() entered");
-    sht20::begin();
-    LOG_INFO(TAG_CUSTOM, "SHT20 warm-up T=%.2f H=%.1f", G.temp_c, G.rh_pct);
+    // sht20::begin();
+    sht30::begin();
+    // LOG_INFO(TAG_CUSTOM, "SHT20 warm-up T=%.2f H=%.1f", G.temp_c, G.rh_pct);
+    LOG_INFO(TAG_CUSTOM, "SHT30 warm-up T=%.2f H=%.1f", G.temp_c, G.rh_pct);
 }
 
 // 5초마다 직접 MQTT publish (debug.tele과 무관)
@@ -97,12 +100,17 @@ void custom_every_5seconds()
 {
     // measure every 5s (keep bus usage modest; touch shares the bus)
     float t,h;
-    if(sht20::read(t,h)){
+    // if(sht20::read(t,h)){
+    if(sht30::read(t,h)){
         G.temp_c=t; G.rh_pct=h;
-        LOG_DEBUG(TAG_CUSTOM, "SHT20 T=%.2fC H=%.1f%%", G.temp_c, G.rh_pct);
+        // LOG_DEBUG(TAG_CUSTOM, "SHT20 T=%.2fC H=%.1f%%", G.temp_c, G.rh_pct);
+        char buf[64];
+        snprintf(buf, sizeof(buf), "SHT30 T=%.2fC H=%.1f%%", G.temp_c, G.rh_pct);
+        LOG_DEBUG(TAG_CUSTOM, buf);
         ui::set_current_temp(G.temp_c);
     }else{
-        LOG_ERROR(TAG_CUSTOM, "SHT20 read failed");
+        // LOG_ERROR(TAG_CUSTOM, "SHT20 read failed");
+        LOG_ERROR(TAG_CUSTOM, "SHT30 read failed");
     }
 }
 
