@@ -85,15 +85,19 @@ void custom_every_second()
 {
     ui::attach_once();
 
+    // NOTE: 부팅 후 이렇게 setpoint, power 기본값을 퍼블리시 하면
+    // 이 메시지를 수신하여 디스크에 저장하는 SuperB 에선 상태가 꼬일 수 있다
+    // 그러므로 메시지를 보내지 않는다
+
     // MQTT 초기 퍼블리시 스케줄 처리
-    if(g_need_initial_publish && millis() > g_publish_after_ms) {
-        if(ui::is_ready()) { // attach_once() 완료 확인
-            LOG_INFO(TAG_CUSTOM, "Initial publish_all after MQTT connect");
-            mqttc::publish_all();
-            g_need_initial_publish = false;
-        }
-        // 아직 UI 미준비면 다음 초에 다시 체크
-    }
+    // if(g_need_initial_publish && millis() > g_publish_after_ms) {
+    //     if(ui::is_ready()) { // attach_once() 완료 확인
+    //         LOG_INFO(TAG_CUSTOM, "Initial publish_all after MQTT connect");
+    //         mqttc::publish_all();
+    //         g_need_initial_publish = false;
+    //     }
+    //     // 아직 UI 미준비면 다음 초에 다시 체크
+    // }
 }
 
 void custom_every_5seconds()
@@ -104,9 +108,7 @@ void custom_every_5seconds()
     if(sht30::read(t,h)){
         G.temp_c=t; G.rh_pct=h;
         // LOG_DEBUG(TAG_CUSTOM, "SHT20 T=%.2fC H=%.1f%%", G.temp_c, G.rh_pct);
-        char buf[64];
-        snprintf(buf, sizeof(buf), "SHT30 T=%.2fC H=%.1f%%", G.temp_c, G.rh_pct);
-        LOG_DEBUG(TAG_CUSTOM, buf);
+        LOG_DEBUG(TAG_CUSTOM, "SHT30 T=%.2fC H=%.1f%%", G.temp_c, G.rh_pct);
         ui::set_current_temp(G.temp_c);
     }else{
         // LOG_ERROR(TAG_CUSTOM, "SHT20 read failed");
