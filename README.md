@@ -4,6 +4,8 @@
 
 OpenHASP 기반 온도조절기 프로젝트입니다. 내장된 SHT20 온습도센서를 사용하여 현재 온도를 측정하고, 냉방/난방 모드를 독립적으로 설정할 수 있습니다. 각 모드별로 설정온도를 UI를 통해 조정할 수 있으며, 모든 데이터는 MQTT를 통해 전송됩니다. 또한 MQTT를 통한 원격 제어도 지원합니다.
 
+> 🚀 퀵 가이드: [펌웨어 설치 바로가기](https://niot-inc.github.io/openhasp-hvac-thermostat)
+
 ## USB to Serial 포트 드라이버 설치 (macOS)
 
 ESP32-S3 장치가 인식되지 않는 경우 CH34x USB to Serial 드라이버를 설치해야 합니다.
