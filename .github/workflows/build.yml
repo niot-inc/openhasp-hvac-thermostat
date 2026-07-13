@@ -1,0 +1,90 @@
+name: Build firmware
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "images/**"
+      - "webflash/**"
+      - "index.html"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "images/**"
+      - "webflash/**"
+      - "index.html"
+  workflow_dispatch:
+
+env:
+  # 오버레이를 얹을 openHASP 버전 (README 빌드 가이드 기준 0.7.0 계열)
+  OPENHASP_REF: 0.7.0-rc13
+  BUILD_ENV: panlee-zw3d95ce01s-tr-4848_16MB
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout overlay (this repo)
+        uses: actions/checkout@v4
+        with:
+          path: overlay
+
+      - name: Checkout openHASP
+        uses: actions/checkout@v4
+        with:
+          repository: HASwitchPlate/openHASP
+          ref: ${{ env.OPENHASP_REF }}
+          submodules: true
+          path: openhasp
+
+      - name: Apply overlay onto openHASP tree
+        run: |
+          cp -v overlay/src/custom/*.cpp overlay/src/custom/*.h openhasp/src/custom/
+          cp -v overlay/include/user_config_override.h openhasp/include/
+          cp -v overlay/platformio_override.ini openhasp/
+          cp -v overlay/data/* openhasp/data/
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ env.OPENHASP_REF }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio-${{ env.OPENHASP_REF }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio setuptools
+
+      - name: Build firmware
+        working-directory: openhasp
+        run: pio run -e ${{ env.BUILD_ENV }}
+
+      - name: Build filesystem image
+        working-directory: openhasp
+        run: pio run -e ${{ env.BUILD_ENV }} -t buildfs
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist
+          cp openhasp/.pio/build/${{ env.BUILD_ENV }}/firmware.bin dist/firmware_sht30.bin
+          cp openhasp/.pio/build/${{ env.BUILD_ENV }}/littlefs.bin dist/littlefs.bin
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ env.BUILD_ENV }}-${{ github.sha }}
+          path: dist/*
