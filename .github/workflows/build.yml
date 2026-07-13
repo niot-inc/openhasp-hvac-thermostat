@@ -37,6 +37,8 @@ jobs:
           ref: ${{ env.OPENHASP_REF }}
           submodules: true
           path: openhasp
+          # tools/auto_firmware_version.py가 git describe로 버전을 뽑으므로 태그 히스토리 필요
+          fetch-depth: 0
 
       - name: Apply overlay onto openHASP tree
         run: |
@@ -69,7 +71,8 @@ jobs:
       - name: Install PlatformIO
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade platformio "setuptools<81"
+          # dulwich: openHASP 빌드 스크립트의 자체 설치 로직이 최신 pip에서 깨지므로 선설치
+          pip install --upgrade platformio "setuptools<81" dulwich
 
       - name: Build firmware
         working-directory: openhasp
