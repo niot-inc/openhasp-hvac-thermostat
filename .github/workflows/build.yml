@@ -108,14 +108,13 @@ jobs:
           path: dist/*
 
       # 수동 실행(deploy 체크) 또는 릴리스 발행 시에만 웹 플래셔 배포물 커밋.
-      # 웹 플래셔(manifest.json)는 firmware.bin(full) + littlefs.bin을 사용하고,
-      # firmware_sht30.bin은 장치 웹 UI OTA 업데이트용 앱 이미지다.
+      # 각 파일의 용도는 webflash/README.md 참고.
       - name: Deploy to webflash
         if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
         working-directory: overlay
         run: |
-          cp ../dist/firmware_full.bin webflash/firmware.bin
-          cp ../dist/firmware_ota.bin  webflash/firmware_sht30.bin
+          cp ../dist/firmware_full.bin webflash/firmware_full.bin
+          cp ../dist/firmware_ota.bin  webflash/firmware_ota.bin
           cp ../dist/littlefs.bin      webflash/littlefs.bin
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
