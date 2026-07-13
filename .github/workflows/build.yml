@@ -15,6 +15,16 @@ on:
       - "webflash/**"
       - "index.html"
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: "빌드 결과를 webflash/에 커밋 (웹 플래셔 배포)"
+        type: boolean
+        default: true
+  release:
+    types: [published]
+
+permissions:
+  contents: write
 
 env:
   # 오버레이를 얹을 openHASP 버전 (README 빌드 가이드 기준 0.7.0 계열)
@@ -85,7 +95,10 @@ jobs:
       - name: Collect artifacts
         run: |
           mkdir -p dist
-          cp openhasp/.pio/build/${{ env.BUILD_ENV }}/firmware.bin dist/firmware_sht30.bin
+          # full: 부트로더+파티션+앱 병합 이미지 (웹 플래셔가 0번지에 굽는 파일)
+          cp openhasp/build_output/firmware/*_full_*.bin dist/firmware_full.bin
+          # ota: 앱 전용 이미지 (장치 웹 UI의 OTA 업데이트용)
+          cp openhasp/build_output/firmware/*_ota_*.bin dist/firmware_ota.bin
           cp openhasp/.pio/build/${{ env.BUILD_ENV }}/littlefs.bin dist/littlefs.bin
 
       - name: Upload firmware artifact
@@ -93,3 +106,25 @@ jobs:
         with:
           name: firmware-${{ env.BUILD_ENV }}-${{ github.sha }}
           path: dist/*
+
+      # 수동 실행(deploy 체크) 또는 릴리스 발행 시에만 웹 플래셔 배포물 커밋.
+      # 웹 플래셔(manifest.json)는 firmware.bin(full) + littlefs.bin을 사용하고,
+      # firmware_sht30.bin은 장치 웹 UI OTA 업데이트용 앱 이미지다.
+      - name: Deploy to webflash
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
+        working-directory: overlay
+        run: |
+          cp ../dist/firmware_full.bin webflash/firmware.bin
+          cp ../dist/firmware_ota.bin  webflash/firmware_sht30.bin
+          cp ../dist/littlefs.bin      webflash/littlefs.bin
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add webflash/
+          if git diff --cached --quiet; then
+            echo "webflash 변경 없음 — 커밋 생략"
+            exit 0
+          fi
+          git commit -m "chore: webflash 펌웨어 갱신 (${GITHUB_EVENT_NAME}, ${GITHUB_SHA::7})"
+          # 릴리스 이벤트는 태그(detached HEAD)에서 돌므로 main으로 푸시
+          TARGET_BRANCH="${{ github.event_name == 'release' && 'main' || github.ref_name }}"
+          git push origin "HEAD:${TARGET_BRANCH}"
