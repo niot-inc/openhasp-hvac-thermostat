@@ -62,12 +62,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          # openHASP tools/auto_firmware_version.py가 pkg_resources를 사용하므로
+          # pkg_resources가 제거된 최신 Python/setuptools 조합을 피한다
+          python-version: "3.11"
 
       - name: Install PlatformIO
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade platformio setuptools
+          pip install --upgrade platformio "setuptools<81"
 
       - name: Build firmware
         working-directory: openhasp
