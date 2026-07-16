@@ -39,6 +39,11 @@ static int    g_read_fails = 0;   // 연속 read 실패 횟수
 static String g_i2c_scan   = "";  // 마지막 I2C 버스 스캔 결과
 static bool   g_last_ok    = false;
 
+// SHT30이 주소는 ACK하나 측정 읽기가 계속 실패(마진 불량)하는 경우, 이만큼 연속 실패하면
+// 내장 SHT20으로 폴백한다(부정확하지만 0/무표시보단 낫게). 재부팅 전까지 SHT20 유지.
+// 정상 SHT30은 실패가 없어 발동하지 않는다.
+static const int FALLBACK_AFTER = 4;  // 4회 = 약 20초
+
 static bool i2c_present(uint8_t addr){
     Wire.beginTransmission(addr);
     return Wire.endTransmission() == 0;
@@ -191,8 +196,15 @@ void custom_every_5seconds()
         g_read_fails++; g_last_ok=false;
         LOG_ERROR(TAG_CUSTOM, "%s read failed (#%d)", sensor_name(g_sensor), g_read_fails);
         g_i2c_scan = i2c_scan();
-        // 실패 지속 시 재감지 (SHT30이 나중에 재연결되면 흡수). 정상 보드는 실패가 없어 미발동
-        if(g_read_fails % 3 == 0) detect_and_begin();
+        if(g_sensor == SENSOR_SHT30 && g_read_fails >= FALLBACK_AFTER && i2c_present(0x40)){
+            // 불량 SHT30(응답은 하나 못 읽음) → 내장 SHT20으로 폴백. 값이라도 나오게.
+            // 재부팅 전까지 SHT20 유지. 어드민엔 fallback=true + '점검 필요'로 계속 표시됨.
+            LOG_INFO(TAG_CUSTOM, "SHT30 unreadable, falling back to built-in SHT20");
+            g_sensor = SENSOR_SHT20; sht20::begin(); g_read_fails = 0;
+        }else if(g_sensor == SENSOR_NONE && g_read_fails % 3 == 0){
+            // 센서가 아예 없던 상태 → 재탐색(나중에 연결되면 흡수)
+            detect_and_begin();
+        }
     }
 }
 
