@@ -76,6 +76,14 @@ static bool sensor_read(float &t, float &h){
     return false;
 }
 
+// 현재 활성 센서에 적용 중인 온도 보정값(/superb.json). 어드민에서 보정 확인용.
+static float active_temp_offset(){
+    float t = 0.0f, h = 0.0f;
+    if(g_sensor == SENSOR_SHT30) sht30::get_offsets(t, h);
+    else if(g_sensor == SENSOR_SHT20) sht20::get_offsets(t, h);
+    return t;
+}
+
 // ========= Get device name helpers =========
 String get_device_name_from_config() {
   if (g_device_name.length()) return g_device_name;
@@ -143,6 +151,7 @@ void custom_loop()
         hb["read_ok"]=g_last_ok;
         hb["fails"]=g_read_fails;
         hb["i2c"]=g_i2c_scan;                        // 0x44=SHT30, 0x40=SHT20, 0x38=touch
+        hb["temp_offset"]=active_temp_offset();      // 적용 중인 온도 보정값(도)
         char htopic[128];
         snprintf(htopic,sizeof(htopic),"hasp/%s/state/sensor_health",dev.c_str());
         char hpay[256]; size_t hn=serializeJson(hb,hpay,sizeof(hpay));
