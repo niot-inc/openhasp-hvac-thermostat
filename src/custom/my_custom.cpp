@@ -10,6 +10,7 @@
 
 #include "hasp_debug.h"
 
+#include <Wire.h>
 #include "state.h"
 #include "sht20.h"
 #include "sht30.h"
@@ -20,6 +21,60 @@ static bool g_need_initial_publish = false;
 static uint32_t g_publish_after_ms = 0;
 
 static String g_device_name;
+
+// ========= 센서 자동 선택 =========
+// 이 보드엔 내장 SHT20(0x40, 기판 발열로 부정확)이 있고, 정확도를 위해 외장 SHT30(0x44)을
+// 추가한다. 부팅 시 버스를 스캔해 SHT30을 "우선" 선택하고, 없으면 SHT20으로 폴백하되
+// fallback(부정확) 임을 명시한다. 한 펌웨어로 모든 보드가 동작한다.
+static const int SENSOR_SDA = 15, SENSOR_SCL = 6;
+enum SensorKind { SENSOR_NONE = 0, SENSOR_SHT30, SENSOR_SHT20 };
+static SensorKind g_sensor = SENSOR_NONE;
+static const char* sensor_name(SensorKind k){
+    return k==SENSOR_SHT30 ? "sht30" : k==SENSOR_SHT20 ? "sht20" : "none";
+}
+static bool sensor_is_fallback(){ return g_sensor == SENSOR_SHT20; } // 내장=부정확 폴백
+
+// 진단/상태
+static int    g_read_fails = 0;   // 연속 read 실패 횟수
+static String g_i2c_scan   = "";  // 마지막 I2C 버스 스캔 결과
+static bool   g_last_ok    = false;
+
+static bool i2c_present(uint8_t addr){
+    Wire.beginTransmission(addr);
+    return Wire.endTransmission() == 0;
+}
+
+// 버스 전역 스캔 (센서 유무/종류 원격 진단용). 버스는 터치와 공유 → 잦은 스캔 지양.
+static String i2c_scan(){
+    String s;
+    for(uint8_t a = 0x08; a <= 0x77; a++){
+        Wire.beginTransmission(a);
+        if(Wire.endTransmission() == 0){
+            s += "0x"; if(a < 16) s += "0"; s += String(a, HEX); s += " ";
+        }
+    }
+    s.trim();
+    return s;
+}
+
+// 버스 스캔 → 센서 종류 결정 → 해당 드라이버 begin(). 재감지 시에도 재사용.
+static void detect_and_begin(){
+    Wire.begin(SENSOR_SDA, SENSOR_SCL);
+    Wire.setClock(50000);
+    delay(5);
+    if(i2c_present(0x44))      { g_sensor = SENSOR_SHT30; sht30::begin(); }
+    else if(i2c_present(0x40)) { g_sensor = SENSOR_SHT20; sht20::begin(); }
+    else                       { g_sensor = SENSOR_NONE; }
+    g_i2c_scan = i2c_scan();
+    LOG_INFO(TAG_CUSTOM, "sensor detected: %s%s [%s]", sensor_name(g_sensor),
+             sensor_is_fallback() ? " (fallback/inaccurate)" : "", g_i2c_scan.c_str());
+}
+
+static bool sensor_read(float &t, float &h){
+    if(g_sensor == SENSOR_SHT30) return sht30::read(t,h);
+    if(g_sensor == SENSOR_SHT20) return sht20::read(t,h);
+    return false;
+}
 
 // ========= Get device name helpers =========
 String get_device_name_from_config() {
@@ -58,10 +113,8 @@ String get_device_name_from_config() {
 void custom_setup()
 {
     LOG_INFO(TAG_CUSTOM, "custom_setup() entered");
-    // sht20::begin();
-    sht30::begin();
-    // LOG_INFO(TAG_CUSTOM, "SHT20 warm-up T=%.2f H=%.1f", G.temp_c, G.rh_pct);
-    LOG_INFO(TAG_CUSTOM, "SHT30 warm-up T=%.2f H=%.1f", G.temp_c, G.rh_pct);
+    detect_and_begin();
+    LOG_INFO(TAG_CUSTOM, "%s warm-up T=%.2f H=%.1f", sensor_name(g_sensor), G.temp_c, G.rh_pct);
 }
 
 // 5초마다 직접 MQTT publish (debug.tele과 무관)
@@ -71,13 +124,29 @@ void custom_loop()
     static unsigned long last=0; unsigned long now=millis();
     if(now-last>=5000){
         last=now;
+        String dev=get_device_name_from_config();
+
         StaticJsonDocument<256> d;
         if(!isnan(G.temp_c)) d["temperature"]=round(G.temp_c*10)/10.0;
         if(!isnan(G.rh_pct)) d["humidity"]=round(G.rh_pct*10)/10.0;
-        String dev=get_device_name_from_config(); char topic[128];
+        d["sensor"]=sensor_name(g_sensor);           // 어떤 센서로 잰 값인지
+        if(sensor_is_fallback()) d["fallback"]=true; // 내장 SHT20 폴백 = 부정확
+        char topic[128];
         snprintf(topic,sizeof(topic),"hasp/%s/state/sensors",dev.c_str());
         char payload[256]; size_t n=serializeJson(d,payload,sizeof(payload));
         mqttPublish(topic,payload,n,false);
+
+        // 센서 상태(retained): 새 구독자가 접속 즉시 방별 센서 건강을 확인 → 원격 진단 용이
+        StaticJsonDocument<256> hb;
+        hb["sensor"]=sensor_name(g_sensor);          // sht30 / sht20 / none
+        hb["fallback"]=sensor_is_fallback();
+        hb["read_ok"]=g_last_ok;
+        hb["fails"]=g_read_fails;
+        hb["i2c"]=g_i2c_scan;                        // 0x44=SHT30, 0x40=SHT20, 0x38=touch
+        char htopic[128];
+        snprintf(htopic,sizeof(htopic),"hasp/%s/state/sensor_health",dev.c_str());
+        char hpay[256]; size_t hn=serializeJson(hb,hpay,sizeof(hpay));
+        mqttPublish(htopic,hpay,hn,true);            // retained
     }
 }
 
@@ -104,15 +173,17 @@ void custom_every_5seconds()
 {
     // measure every 5s (keep bus usage modest; touch shares the bus)
     float t,h;
-    // if(sht20::read(t,h)){
-    if(sht30::read(t,h)){
+    if(sensor_read(t,h)){
         G.temp_c=t; G.rh_pct=h;
-        // LOG_DEBUG(TAG_CUSTOM, "SHT20 T=%.2fC H=%.1f%%", G.temp_c, G.rh_pct);
-        LOG_DEBUG(TAG_CUSTOM, "SHT30 T=%.2fC H=%.1f%%", G.temp_c, G.rh_pct);
+        g_read_fails=0; g_last_ok=true;
+        LOG_DEBUG(TAG_CUSTOM, "%s T=%.2fC H=%.1f%%", sensor_name(g_sensor), G.temp_c, G.rh_pct);
         ui::set_current_temp(G.temp_c);
     }else{
-        // LOG_ERROR(TAG_CUSTOM, "SHT20 read failed");
-        LOG_ERROR(TAG_CUSTOM, "SHT30 read failed");
+        g_read_fails++; g_last_ok=false;
+        LOG_ERROR(TAG_CUSTOM, "%s read failed (#%d)", sensor_name(g_sensor), g_read_fails);
+        g_i2c_scan = i2c_scan();
+        // 실패 지속 시 재감지 (SHT30이 나중에 재연결되면 흡수). 정상 보드는 실패가 없어 미발동
+        if(g_read_fails % 3 == 0) detect_and_begin();
     }
 }
 
