@@ -94,6 +94,33 @@ static float active_temp_offset(){
     return t;
 }
 
+// ========= Deferred OTA =========
+// openHASP 코어의 command/update는 MQTT 태스크(작은 스택)에서 OTA를 실행해
+// 플래시 도중 스택 오버플로로 리셋된다 (실기 확인: MQTT 경로 ~25% 크래시,
+// 동일 명령을 loop 태스크(텔넷 콘솔)로 실행하면 100% 완주).
+// 해결: custom/update로 URL만 받아두고, 실행은 main loop에서 한다.
+static char g_pending_ota_url[224] = "";
+
+// MQTT 수신 컨텍스트에서 호출 — URL 저장만 하고 즉시 반환 (스택 소모 최소화)
+bool custom_request_ota(const char* url){
+    if(!url || strncmp(url, "http", 4) != 0) return false;
+    if(strlen(url) >= sizeof(g_pending_ota_url)) return false;
+    strncpy(g_pending_ota_url, url, sizeof(g_pending_ota_url) - 1);
+    g_pending_ota_url[sizeof(g_pending_ota_url) - 1] = '\0';
+    return true;
+}
+
+// main loop 컨텍스트에서 보류된 OTA 실행 (custom_loop에서 호출)
+static void run_pending_ota(){
+    if(!g_pending_ota_url[0]) return;
+    char url[sizeof(g_pending_ota_url)];
+    strncpy(url, g_pending_ota_url, sizeof(url));
+    g_pending_ota_url[0] = '\0';
+    LOG_INFO(TAG_CUSTOM, "deferred OTA from loop task: %s", url);
+    // 코어 update 명령을 loop 태스크에서 실행 → 충분한 스택으로 OTA 완주
+    dispatch_topic_payload("update", url, true, TAG_CUSTOM);
+}
+
 // MQTT calibrate 명령용: 활성 센서의 온도 보정을 적용하고 /superb.json에 저장.
 // rh_offset은 기존 값 유지. 센서 없으면 false.
 bool custom_apply_temp_offset(float temp_offset){
@@ -156,6 +183,8 @@ void custom_setup()
 static unsigned long lastPublish = 0;
 void custom_loop()
 {
+    run_pending_ota(); // 보류된 원격 OTA를 loop 태스크(큰 스택)에서 실행
+
     static unsigned long last=0; unsigned long now=millis();
     if(now-last>=5000){
         last=now;
