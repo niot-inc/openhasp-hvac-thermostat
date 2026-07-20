@@ -11,6 +11,7 @@ static bool topic_ends_with(const char* topic, const char* suffix){
 
 String get_device_name_from_config(); // state.cpp 대신 my_custom에 이미 구현되어 있으면 링크됨
 bool custom_apply_temp_offset(float temp_offset); // my_custom.cpp
+bool custom_request_ota(const char* url);         // my_custom.cpp (deferred OTA)
 
 namespace mqttc {
 
@@ -52,6 +53,18 @@ namespace mqttc {
 
 
         if(!topic||!payload) return;
+
+        // 원격 OTA: hasp/<dev>/command/custom/update <URL(평문)>
+        // 코어 update와 달리 여기(MQTT 태스크)서 실행하지 않고 저장만 한다.
+        // 실제 실행은 my_custom의 loop 태스크에서 (스택 오버플로 크래시 회피).
+        if(topic_ends_with(topic, "update")){
+            if(custom_request_ota(payload)){
+                LOG_INFO(TAG_CUSTOM, "OTA queued: %s", payload);
+            }else{
+                LOG_ERROR(TAG_CUSTOM, "OTA request rejected: %s", payload);
+            }
+            return;
+        }
 
         StaticJsonDocument<256> doc;
         if(deserializeJson(doc, payload)) return;
