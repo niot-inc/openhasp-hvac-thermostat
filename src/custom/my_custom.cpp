@@ -17,6 +17,11 @@
 #include "ui_sync.h"
 #include "mqtt_ctrl.h"
 
+// CI가 빌드 시 주입 (릴리즈 태그 또는 dev-<sha7>). 미주입 로컬 빌드는 "dev".
+#ifndef SUPERB_FW_VERSION
+#define SUPERB_FW_VERSION "dev"
+#endif
+
 static bool g_need_initial_publish = false;
 static uint32_t g_publish_after_ms = 0;
 
@@ -174,6 +179,7 @@ void custom_loop()
         hb["fails"]=g_read_fails;
         hb["i2c"]=g_i2c_scan;                        // 0x44=SHT30, 0x40=SHT20, 0x38=touch
         hb["temp_offset"]=active_temp_offset();      // 적용 중인 온도 보정값(도)
+        hb["fw"]=SUPERB_FW_VERSION;                  // 펌웨어 버전 (어드민 표시/업데이트 판정용)
         char htopic[128];
         snprintf(htopic,sizeof(htopic),"hasp/%s/state/sensor_health",dev.c_str());
         char hpay[256]; size_t hn=serializeJson(hb,hpay,sizeof(hpay));

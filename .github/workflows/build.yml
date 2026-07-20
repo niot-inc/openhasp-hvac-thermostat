@@ -57,6 +57,21 @@ jobs:
           cp -v overlay/platformio_override.ini openhasp/
           cp -v overlay/data/* openhasp/data/
 
+      - name: Determine firmware version
+        id: fwver
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=dev-$(git -C overlay rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Inject firmware version into build flags
+        run: |
+          # [override] build_flags에 SUPERB_FW_VERSION define 추가
+          sed -i "s|^build_flags =|build_flags =\n   -D SUPERB_FW_VERSION='\"${{ steps.fwver.outputs.version }}\"'|" openhasp/platformio_override.ini
+          grep -A3 "^build_flags" openhasp/platformio_override.ini | head -5
+
       - name: Cache pip
         uses: actions/cache@v4
         with:
@@ -112,10 +127,26 @@ jobs:
       - name: Deploy to webflash
         if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
         working-directory: overlay
+        env:
+          FW_VERSION: ${{ steps.fwver.outputs.version }}
+          RELEASE_NOTES: ${{ github.event.release.body }}
         run: |
           cp ../dist/firmware_full.bin webflash/firmware_full.bin
           cp ../dist/firmware_ota.bin  webflash/firmware_ota.bin
           cp ../dist/littlefs.bin      webflash/littlefs.bin
+          if [ "${{ github.event_name }}" = "release" ]; then
+            python3 - <<'EOF'
+          import json, os, subprocess, datetime
+          notes = os.environ.get("RELEASE_NOTES", "").strip()
+          sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode().strip()
+          json.dump({
+            "version": os.environ["FW_VERSION"],
+            "date": datetime.date.today().isoformat(),
+            "sha": sha,
+            "notes": notes,
+          }, open("webflash/version.json", "w"), ensure_ascii=False, indent=2)
+          EOF
+          fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add webflash/
