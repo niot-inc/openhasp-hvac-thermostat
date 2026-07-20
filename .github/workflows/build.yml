@@ -69,7 +69,7 @@ jobs:
       - name: Inject firmware version into build flags
         run: |
           # [override] build_flags에 SUPERB_FW_VERSION define 추가
-          sed -i "s|^build_flags =|build_flags =\n   -D SUPERB_FW_VERSION='\"${{ steps.fwver.outputs.version }}\"'|" openhasp/platformio_override.ini
+          sed -i "0,/^build_flags =/s//build_flags =\n   -D SUPERB_FW_VERSION='\"${{ steps.fwver.outputs.version }}\"'/" openhasp/platformio_override.ini
           grep -A3 "^build_flags" openhasp/platformio_override.ini | head -5
 
       - name: Cache pip
