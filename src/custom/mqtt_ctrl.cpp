@@ -10,6 +10,7 @@ static bool topic_ends_with(const char* topic, const char* suffix){
 }
 
 String get_device_name_from_config(); // state.cpp 대신 my_custom에 이미 구현되어 있으면 링크됨
+bool custom_apply_temp_offset(float temp_offset); // my_custom.cpp
 
 namespace mqttc {
 
@@ -54,6 +55,23 @@ namespace mqttc {
 
         StaticJsonDocument<256> doc;
         if(deserializeJson(doc, payload)) return;
+
+        // 온도 보정 명령: hasp/<dev>/command/custom/calibrate {"temp_offset":-3}
+        if(topic_ends_with(topic, "calibrate")){
+            if(!doc.containsKey("temp_offset")){
+                LOG_ERROR(TAG_CUSTOM, "calibrate: temp_offset missing");
+                return;
+            }
+            float v = doc["temp_offset"].as<float>();
+            if(isnan(v) || v < -30.0f || v > 30.0f){
+                LOG_ERROR(TAG_CUSTOM, "calibrate: out of range %.1f", v);
+                return;
+            }
+            if(!custom_apply_temp_offset(v)){
+                LOG_ERROR(TAG_CUSTOM, "calibrate: no active sensor");
+            }
+            return;
+        }
 
         auto apply = [&](bool& power, float& sp, ModeState& st,
                      uint16_t label_id, void(*sync)(), const char* name){

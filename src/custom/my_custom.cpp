@@ -89,6 +89,23 @@ static float active_temp_offset(){
     return t;
 }
 
+// MQTT calibrate 명령용: 활성 센서의 온도 보정을 적용하고 /superb.json에 저장.
+// rh_offset은 기존 값 유지. 센서 없으면 false.
+bool custom_apply_temp_offset(float temp_offset){
+    float t = 0.0f, h = 0.0f;
+    if(g_sensor == SENSOR_SHT30){
+        sht30::get_offsets(t, h);
+        sht30::set_offsets(temp_offset, h, true);
+    }else if(g_sensor == SENSOR_SHT20){
+        sht20::get_offsets(t, h);
+        sht20::set_offsets(temp_offset, h, true);
+    }else{
+        return false;
+    }
+    LOG_INFO(TAG_CUSTOM, "temp_offset %.1f -> %.1f (persisted)", t, temp_offset);
+    return true;
+}
+
 // ========= Get device name helpers =========
 String get_device_name_from_config() {
   if (g_device_name.length()) return g_device_name;
